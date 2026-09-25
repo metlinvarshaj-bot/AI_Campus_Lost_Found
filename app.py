@@ -13,7 +13,7 @@ from database import schema
 
 
 # ============================================================
-# STREAMLIT CONFIG
+# STREAMLIT CONFIGURATION
 # ============================================================
 
 st.set_page_config(
@@ -30,10 +30,10 @@ st.set_page_config(
 
 def initialize_database():
     """
-    Create all SQLAlchemy tables automatically.
+    Automatically create all database tables.
 
-    This is important for Streamlit Cloud because a fresh
-    deployment may not have the SQLite database/tables yet.
+    This is important for Streamlit Cloud because the cloud
+    environment may start with a fresh SQLite database.
     """
     try:
         Base.metadata.create_all(bind=engine)
@@ -65,87 +65,36 @@ create_required_directories()
 
 
 # ============================================================
-# PROFESSIONAL CSS
+# CUSTOM CSS
 # ============================================================
 
 st.markdown(
     """
     <style>
 
+    /* Main content spacing */
     .main {
         padding-top: 1rem;
     }
 
-    .app-title {
-        font-size: 2.4rem;
-        font-weight: 800;
-        margin-bottom: 0.2rem;
+    /* Hide Streamlit's automatic pages navigation */
+    [data-testid="stSidebarNav"] {
+        display: none;
     }
 
-    .app-subtitle {
-        font-size: 1rem;
-        opacity: 0.75;
-        margin-bottom: 1.5rem;
+    /* Sidebar */
+    [data-testid="stSidebar"] {
+        border-right: 1px solid rgba(128, 128, 128, 0.20);
     }
 
-    .metric-card {
-        padding: 1.2rem;
-        border-radius: 16px;
-        border: 1px solid rgba(128, 128, 128, 0.25);
-        background: rgba(128, 128, 128, 0.06);
-        min-height: 120px;
-    }
-
-    .metric-title {
-        font-size: 0.9rem;
-        opacity: 0.75;
-        margin-bottom: 0.4rem;
-    }
-
-    .metric-value {
-        font-size: 2rem;
-        font-weight: 800;
-    }
-
-    .info-card {
-        padding: 1.2rem;
-        border-radius: 16px;
-        border: 1px solid rgba(128, 128, 128, 0.22);
-        margin-bottom: 1rem;
-        background: rgba(128, 128, 128, 0.04);
-    }
-
-    .success-box {
-        padding: 1rem;
-        border-radius: 12px;
-        border: 1px solid #2e8b57;
-        background: rgba(46, 139, 87, 0.10);
-    }
-
-    .warning-box {
-        padding: 1rem;
-        border-radius: 12px;
-        border: 1px solid #d69e2e;
-        background: rgba(214, 158, 46, 0.10);
-    }
-
-    .error-box {
-        padding: 1rem;
-        border-radius: 12px;
-        border: 1px solid #c53030;
-        background: rgba(197, 48, 48, 0.10);
-    }
-
+    /* Buttons */
     .stButton > button {
         border-radius: 10px;
         font-weight: 600;
         min-height: 42px;
     }
 
-    [data-testid="stSidebar"] {
-        border-right: 1px solid rgba(128, 128, 128, 0.20);
-    }
-
+    /* Footer */
     footer {
         visibility: hidden;
     }
@@ -160,7 +109,7 @@ st.markdown(
 # SESSION STATE
 # ============================================================
 
-default_session_state = {
+DEFAULT_SESSION_STATE = {
     "logged_in": False,
     "role": None,
     "user_id": None,
@@ -169,13 +118,14 @@ default_session_state = {
     "current_page": "dashboard",
 }
 
-for key, value in default_session_state.items():
+
+for key, value in DEFAULT_SESSION_STATE.items():
     if key not in st.session_state:
         st.session_state[key] = value
 
 
 # ============================================================
-# DATABASE SESSION HELPER
+# DATABASE SESSION
 # ============================================================
 
 def get_db_session():
@@ -183,13 +133,12 @@ def get_db_session():
 
 
 # ============================================================
-# ADMIN AUTO-CREATE USING STREAMLIT SECRETS
+# ADMIN AUTO-CREATE
 # ============================================================
 
 def ensure_admin_account():
     """
-    Automatically create or synchronize the admin account
-    using Streamlit Cloud Secrets.
+    Create or synchronize the admin account from Streamlit Secrets.
 
     Required Streamlit Secrets:
 
@@ -209,7 +158,6 @@ def ensure_admin_account():
 
     except Exception:
         # Secrets are not configured.
-        # Do not create an insecure hard-coded admin.
         return
 
     if not admin_email or not admin_password:
@@ -222,6 +170,7 @@ def ensure_admin_account():
     db = get_db_session()
 
     try:
+
         admin_user = (
             db.query(schema.User)
             .filter(
@@ -231,7 +180,7 @@ def ensure_admin_account():
         )
 
         # ----------------------------------------------------
-        # ADMIN DOES NOT EXIST
+        # CREATE ADMIN IF MISSING
         # ----------------------------------------------------
 
         if admin_user is None:
@@ -249,7 +198,7 @@ def ensure_admin_account():
             db.commit()
 
         # ----------------------------------------------------
-        # ADMIN ALREADY EXISTS
+        # SYNCHRONIZE EXISTING ADMIN
         # ----------------------------------------------------
 
         else:
@@ -278,15 +227,11 @@ def ensure_admin_account():
         db.close()
 
 
-# ============================================================
-# CREATE / UPDATE ADMIN
-# ============================================================
-
 ensure_admin_account()
 
 
 # ============================================================
-# NAVIGATION HELPER
+# PAGE NAVIGATION
 # ============================================================
 
 def set_page(page_name):
@@ -389,8 +334,7 @@ def get_dashboard_counts(user_id=None, role=None):
         returned_count = (
             db.query(schema.LostItem)
             .filter(
-                schema.LostItem.status
-                == "RETURNED"
+                schema.LostItem.status == "RETURNED"
             )
             .count()
         )
@@ -398,8 +342,7 @@ def get_dashboard_counts(user_id=None, role=None):
         pending_verifications = (
             db.query(schema.Verification)
             .filter(
-                schema.Verification.status
-                == "PENDING"
+                schema.Verification.status == "PENDING"
             )
             .count()
         )
@@ -411,13 +354,10 @@ def get_dashboard_counts(user_id=None, role=None):
         total_reward_points = (
             db.query(
                 func.coalesce(
-                    func.sum(
-                        schema.Reward.points
-                    ),
+                    func.sum(schema.Reward.points),
                     0,
                 )
-            )
-            .scalar()
+            ).scalar()
             or 0
         )
 
@@ -426,38 +366,13 @@ def get_dashboard_counts(user_id=None, role=None):
             "found": found_count,
             "matches": match_count,
             "returned": returned_count,
-            "pending_verifications":
-                pending_verifications,
-            "reward_transactions":
-                reward_transactions,
-            "reward_points":
-                total_reward_points,
+            "pending_verifications": pending_verifications,
+            "reward_transactions": reward_transactions,
+            "reward_points": total_reward_points,
         }
 
     finally:
         db.close()
-
-
-# ============================================================
-# METRIC CARD
-# ============================================================
-
-def show_metric(title, value):
-
-    st.markdown(
-        f"""
-        <div class="metric-card">
-            <div class="metric-title">
-                {title}
-            </div>
-
-            <div class="metric-value">
-                {value}
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
 
 
 # ============================================================
@@ -466,24 +381,16 @@ def show_metric(title, value):
 
 def student_dashboard():
 
-    st.markdown(
-        '<div class="app-title">'
-        '🔐 AI Campus Lost & Found'
-        '</div>',
-        unsafe_allow_html=True,
+    user_name = st.session_state.get(
+        "user_name",
+        "Student",
     )
 
-    st.markdown(
-        f"""
-        <div class="app-subtitle">
-            Welcome back,
-            <b>
-                {st.session_state.get("user_name", "Student")}
-            </b>.
-            Find, verify and securely recover lost belongings.
-        </div>
-        """,
-        unsafe_allow_html=True,
+    st.title("🔐 AI Campus Lost & Found")
+
+    st.caption(
+        f"Welcome back, {user_name}. "
+        "Find, verify and securely recover lost belongings."
     )
 
     counts = get_dashboard_counts(
@@ -491,88 +398,80 @@ def student_dashboard():
         role="student",
     )
 
+    # --------------------------------------------------------
+    # METRICS
+    # --------------------------------------------------------
+
     col1, col2, col3, col4, col5 = st.columns(5)
 
     with col1:
-        show_metric(
+        st.metric(
             "My Lost Items",
             counts["lost"],
         )
 
     with col2:
-        show_metric(
+        st.metric(
             "My Found Items",
             counts["found"],
         )
 
     with col3:
-        show_metric(
+        st.metric(
             "Possible Matches",
             counts["matches"],
         )
 
     with col4:
-        show_metric(
+        st.metric(
             "Returned Items",
             counts["returned"],
         )
 
     with col5:
-        show_metric(
+        st.metric(
             "Reward Points",
             counts["reward_points"],
         )
 
-    st.markdown("### How the system works")
+    st.divider()
+
+    # --------------------------------------------------------
+    # HOW SYSTEM WORKS
+    # --------------------------------------------------------
+
+    st.subheader("How the system works")
 
     c1, c2, c3 = st.columns(3)
 
     with c1:
-        st.markdown(
-            """
-            <div class="info-card">
-                <h4>📦 1. Report</h4>
-                <p>
-                Report your lost or found item
-                with description, location,
-                time and optional photo.
-                </p>
-            </div>
-            """,
-            unsafe_allow_html=True,
+        st.subheader("📦 1. Report")
+        st.write(
+            "Report your lost or found item with "
+            "description, location, time and optional photo."
         )
 
     with c2:
-        st.markdown(
-            """
-            <div class="info-card">
-                <h4>🤖 2. AI Match</h4>
-                <p>
-                AI compares text, location,
-                time and images to identify
-                possible matching items.
-                </p>
-            </div>
-            """,
-            unsafe_allow_html=True,
+        st.subheader("🤖 2. AI Match")
+        st.write(
+            "AI compares text, location, time and images "
+            "to identify possible matching items."
         )
 
     with c3:
-        st.markdown(
-            """
-            <div class="info-card">
-                <h4>🔐 3. Secure Return</h4>
-                <p>
-                Verify ownership and complete
-                the handover using OTP and
-                QR verification.
-                </p>
-            </div>
-            """,
-            unsafe_allow_html=True,
+        st.subheader("🔐 3. Secure Return")
+        st.write(
+            "Verify ownership and complete the final "
+            "handover using OTP and QR verification."
         )
 
-    st.markdown("### Quick Actions")
+    st.divider()
+
+    # --------------------------------------------------------
+    # QUICK ACTIONS
+    # --------------------------------------------------------
+
+    st.subheader("Quick Actions")
 
     q1, q2, q3, q4 = st.columns(4)
 
@@ -615,73 +514,77 @@ def student_dashboard():
 
 def admin_dashboard():
 
-    st.markdown(
-        '<div class="app-title">'
-        '🛡️ Campus Lost & Found Admin'
-        '</div>',
-        unsafe_allow_html=True,
-    )
+    st.title("🛡️ Campus Lost & Found Admin")
 
-    st.markdown(
-        """
-        <div class="app-subtitle">
-            Monitor verification, handover and AI matching activity.
-        </div>
-        """,
-        unsafe_allow_html=True,
+    st.caption(
+        "Monitor verification, handover and AI matching activity."
     )
 
     counts = get_dashboard_counts(
         role="admin"
     )
 
+    # --------------------------------------------------------
+    # FIRST ROW
+    # --------------------------------------------------------
+
     col1, col2, col3, col4 = st.columns(4)
 
     with col1:
-        show_metric(
+        st.metric(
             "Total Lost",
             counts["lost"],
         )
 
     with col2:
-        show_metric(
+        st.metric(
             "Total Found",
             counts["found"],
         )
 
     with col3:
-        show_metric(
+        st.metric(
             "AI Matches",
             counts["matches"],
         )
 
     with col4:
-        show_metric(
+        st.metric(
             "Returned",
             counts["returned"],
         )
 
+    # --------------------------------------------------------
+    # SECOND ROW
+    # --------------------------------------------------------
+
     col5, col6, col7 = st.columns(3)
 
     with col5:
-        show_metric(
+        st.metric(
             "Pending Verification",
             counts["pending_verifications"],
         )
 
     with col6:
-        show_metric(
+        st.metric(
             "Reward Transactions",
             counts["reward_transactions"],
         )
 
     with col7:
-        show_metric(
+        st.metric(
             "Reward Points",
             counts["reward_points"],
         )
 
-    st.markdown("### System Overview")
+    st.divider()
+
+    # --------------------------------------------------------
+    # OVERVIEW CHART
+    # --------------------------------------------------------
+
+    st.subheader("System Overview")
 
     overview_df = pd.DataFrame(
         {
@@ -731,7 +634,9 @@ def run_page_module(
     function_candidates,
 ):
     """
-    Load and run page modules safely.
+    Dynamically load page modules.
+
+    This keeps the existing pages/*.py architecture intact.
     """
 
     try:
@@ -743,14 +648,13 @@ def run_page_module(
     except Exception as exc:
 
         st.error(
-            f"Unable to load "
-            f"pages/{module_name}.py\n\n{exc}"
+            f"Unable to load pages/{module_name}.py\n\n{exc}"
         )
 
         return
 
     # --------------------------------------------------------
-    # Known function names
+    # TRY KNOWN FUNCTION NAMES
     # --------------------------------------------------------
 
     for function_name in function_candidates:
@@ -767,14 +671,13 @@ def run_page_module(
                 function()
             except Exception as exc:
                 st.error(
-                    f"Error in "
-                    f"{module_name}.py: {exc}"
+                    f"Error in {module_name}.py: {exc}"
                 )
 
             return
 
     # --------------------------------------------------------
-    # Fallback function discovery
+    # FALLBACK DISCOVERY
     # --------------------------------------------------------
 
     candidates = []
@@ -813,15 +716,13 @@ def run_page_module(
         except Exception as exc:
 
             st.error(
-                f"Error while running "
-                f"{module_name}.py: {exc}"
+                f"Error while running {module_name}.py: {exc}"
             )
 
         return
 
     st.warning(
-        f"No page function found in "
-        f"pages/{module_name}.py"
+        f"No page function found in pages/{module_name}.py"
     )
 
 
@@ -833,45 +734,28 @@ def render_sidebar():
 
     with st.sidebar:
 
-        st.markdown(
-            "## 🔐 AI Campus Lost & Found"
-        )
+        st.title("🔐 AI Campus Lost & Found")
 
-        if st.session_state.get(
-            "logged_in"
-        ):
+        # ----------------------------------------------------
+        # LOGGED-IN USER
+        # ----------------------------------------------------
 
-            st.markdown(
-                f"""
-                <div class="info-card">
+        if st.session_state.get("logged_in"):
 
-                    <b>
-                        {st.session_state.get(
-                            "user_name",
-                            "User"
-                        )}
-                    </b>
-
-                    <br>
-
-                    <small>
-                        Role:
-                        {
-                            st.session_state.get(
-                                "role",
-                                "student"
-                            ).title()
-                        }
-                    </small>
-
-                </div>
-                """,
-                unsafe_allow_html=True,
+            user_name = st.session_state.get(
+                "user_name",
+                "User",
             )
 
             role = st.session_state.get(
-                "role"
+                "role",
+                "student",
             )
+
+            st.subheader(f"👤 {user_name}")
+            st.caption(f"Role: {role.title()}")
+
+            st.divider()
 
             # ------------------------------------------------
             # STUDENT NAVIGATION
@@ -880,29 +764,14 @@ def render_sidebar():
             if role == "student":
 
                 navigation = {
-                    "🏠 Dashboard":
-                        "dashboard",
-
-                    "📱 Report Lost":
-                        "lost_item",
-
-                    "📦 Report Found":
-                        "found_item",
-
-                    "📋 My Reports":
-                        "my_reports",
-
-                    "🤖 Possible Matches":
-                        "possible_matches",
-
-                    "✅ Verification":
-                        "verification",
-
-                    "🔐 Secure Handover":
-                        "handover",
-
-                    "🎁 My Rewards":
-                        "rewards",
+                    "🏠 Dashboard": "dashboard",
+                    "📱 Report Lost": "lost_item",
+                    "📦 Report Found": "found_item",
+                    "📋 My Reports": "my_reports",
+                    "🤖 Possible Matches": "possible_matches",
+                    "✅ Verification": "verification",
+                    "🔐 Secure Handover": "handover",
+                    "🎁 My Rewards": "rewards",
                 }
 
             # ------------------------------------------------
@@ -912,17 +781,10 @@ def render_sidebar():
             else:
 
                 navigation = {
-                    "🏠 Dashboard":
-                        "dashboard",
-
-                    "✅ Verification Review":
-                        "admin_verification",
-
-                    "🔐 Secure Handover":
-                        "handover",
-
-                    "📊 Analytics":
-                        "admin_analytics",
+                    "🏠 Dashboard": "dashboard",
+                    "✅ Verification Review": "admin_verification",
+                    "🔐 Secure Handover": "handover",
+                    "📊 Analytics": "admin_analytics",
                 }
 
             current_page = st.session_state.get(
@@ -973,33 +835,19 @@ def render_sidebar():
                 use_container_width=True,
             ):
 
-                st.session_state[
-                    "logged_in"
-                ] = False
-
-                st.session_state[
-                    "role"
-                ] = None
-
-                st.session_state[
-                    "user_id"
-                ] = None
-
-                st.session_state[
-                    "user_name"
-                ] = None
-
-                set_page(
-                    "dashboard"
-                )
+                st.session_state["logged_in"] = False
+                st.session_state["role"] = None
+                st.session_state["user_id"] = None
+                st.session_state["user_name"] = None
+                st.session_state["page"] = "dashboard"
+                st.session_state["current_page"] = "dashboard"
 
                 st.rerun()
 
         else:
 
             st.info(
-                "Please login or create a "
-                "student account to continue."
+                "Please login or create a student account to continue."
             )
 
 
@@ -1029,7 +877,7 @@ def run_login_page():
 def main():
 
     # --------------------------------------------------------
-    # NOT LOGGED IN
+    # USER NOT LOGGED IN
     # --------------------------------------------------------
 
     if not st.session_state.get(
@@ -1038,11 +886,10 @@ def main():
     ):
 
         run_login_page()
-
         return
 
     # --------------------------------------------------------
-    # LOGGED IN
+    # USER LOGGED IN
     # --------------------------------------------------------
 
     render_sidebar()
@@ -1062,11 +909,9 @@ def main():
             st.session_state.get("role")
             == "admin"
         ):
-
             admin_dashboard()
 
         else:
-
             student_dashboard()
 
     # ========================================================
@@ -1180,10 +1025,7 @@ def main():
                 "Admin access required."
             )
 
-            set_page(
-                "dashboard"
-            )
-
+            set_page("dashboard")
             st.stop()
 
         run_page_module(
@@ -1211,10 +1053,7 @@ def main():
                 "Admin access required."
             )
 
-            set_page(
-                "dashboard"
-            )
-
+            set_page("dashboard")
             st.stop()
 
         run_page_module(
@@ -1234,19 +1073,15 @@ def main():
     else:
 
         st.warning(
-            "Unknown page selected. "
-            "Returning to dashboard."
+            "Unknown page selected. Returning to dashboard."
         )
 
-        set_page(
-            "dashboard"
-        )
-
+        set_page("dashboard")
         st.rerun()
 
 
 # ============================================================
-# ENTRY POINT
+# APPLICATION ENTRY POINT
 # ============================================================
 
 if __name__ == "__main__":
